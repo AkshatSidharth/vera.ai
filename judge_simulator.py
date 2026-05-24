@@ -23,7 +23,7 @@ import os  # needed for config block below
 # =============================================================================
 
 # Your bot's URL (where your bot is running)
-BOT_URL = "http://localhost:8000"
+BOT_URL = "http://localhost:8003"
 
 # Choose your LLM provider: "openai", "anthropic", "gemini", "deepseek", "groq", "ollama", "openrouter"
 LLM_PROVIDER = "anthropic"
@@ -32,7 +32,7 @@ LLM_PROVIDER = "anthropic"
 LLM_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")  # reads from .env / shell env
 
 # Model to use (leave empty for default, or specify like "gpt-4o", "claude-3-5-sonnet-20241022", etc.)
-LLM_MODEL = "claude-sonnet-4-6"
+LLM_MODEL = "claude-3-5-sonnet-20241022"
 
 # For Ollama only: local server URL
 OLLAMA_URL = "http://localhost:11434"
