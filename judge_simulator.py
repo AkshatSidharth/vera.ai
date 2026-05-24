@@ -16,21 +16,23 @@ That's it!
 Author: magicpin AI Challenge Team
 """
 
+import os  # needed for config block below
+
 # =============================================================================
 # ██████  CONFIGURATION - EDIT THIS SECTION ██████
 # =============================================================================
 
 # Your bot's URL (where your bot is running)
-BOT_URL = "http://localhost:8080"
+BOT_URL = "http://localhost:8000"
 
 # Choose your LLM provider: "openai", "anthropic", "gemini", "deepseek", "groq", "ollama", "openrouter"
-LLM_PROVIDER = "openai"
+LLM_PROVIDER = "anthropic"
 
 # Your API key (paste your key here)
-LLM_API_KEY = ""  # <-- PUT YOUR API KEY HERE
+LLM_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")  # reads from .env / shell env
 
 # Model to use (leave empty for default, or specify like "gpt-4o", "claude-3-5-sonnet-20241022", etc.)
-LLM_MODEL = ""  # <-- Optional: specify model or leave empty for default
+LLM_MODEL = "claude-sonnet-4-6"
 
 # For Ollama only: local server URL
 OLLAMA_URL = "http://localhost:11434"
@@ -42,7 +44,6 @@ TEST_SCENARIO = "all"
 # ██████  END OF CONFIGURATION - DON'T EDIT BELOW THIS LINE ██████
 # =============================================================================
 
-import os
 import sys
 import json
 import time
@@ -57,7 +58,8 @@ from abc import ABC, abstractmethod
 
 # Constants
 TIMEOUT_LLM = 45
-DATASET_DIR = Path(__file__).parent / "dataset"
+_base = Path(__file__).parent / "dataset"
+DATASET_DIR = _base / "expanded" if (_base / "expanded").exists() else _base
 
 # =============================================================================
 # TERMINAL OUTPUT
@@ -358,25 +360,41 @@ class DatasetLoader:
 
     def load(self) -> bool:
         try:
+            # Categories — always individual files in categories/
             cat_dir = self.dataset_dir / "categories"
             if cat_dir.exists():
                 for f in cat_dir.glob("*.json"):
                     data = json.load(open(f))
                     self.categories[data.get("slug", f.stem)] = data
 
-            for name, container, key in [
-                ("merchants_seed.json", "merchants", "merchant_id"),
-                ("customers_seed.json", "customers", "customer_id"),
-                ("triggers_seed.json", "triggers", "id")
+            # Merchants / customers / triggers — support both layouts:
+            #   seed layout:     merchants_seed.json  (array wrapped in {merchants: [...]})
+            #   expanded layout: merchants/*.json      (one file per item)
+            for seed_file, subdir, container, key in [
+                ("merchants_seed.json", "merchants", "merchants", "merchant_id"),
+                ("customers_seed.json", "customers", "customers", "customer_id"),
+                ("triggers_seed.json",  "triggers",  "triggers",  "id"),
             ]:
-                path = self.dataset_dir / name
+                storage = getattr(self, container)
+
+                # Try individual-file directory first (expanded dataset)
+                item_dir = self.dataset_dir / subdir
+                if item_dir.is_dir():
+                    for f in item_dir.glob("*.json"):
+                        item = json.load(open(f))
+                        if key in item:
+                            storage[item[key]] = item
+                    continue  # got them from dir; skip seed file
+
+                # Fall back to seed JSON bundle
+                path = self.dataset_dir / seed_file
                 if path.exists():
                     data = json.load(open(path))
                     items = data.get(container, data.get(container.rstrip("s"), []))
-                    storage = getattr(self, container)
                     for item in items:
                         if key in item:
                             storage[item[key]] = item
+
             return True
         except Exception as e:
             print_fail(f"Dataset load error: {e}")
