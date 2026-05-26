@@ -11,16 +11,16 @@ import json
 import os
 import re
 
-import anthropic
+import openai
 
-MODEL = os.environ.get("LLM_MODEL", "claude-sonnet-4-6")
-_client: anthropic.AsyncAnthropic | None = None
+MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
+_client: openai.AsyncOpenAI | None = None
 
 
-def _get_client() -> anthropic.AsyncAnthropic:
+def _get_client() -> openai.AsyncOpenAI:
     global _client
     if _client is None:
-        _client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        _client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     return _client
 
 
@@ -34,19 +34,21 @@ async def compose_for_trigger(bundle: dict, conv_id: str) -> dict | None:
 
     try:
         client = _get_client()
-        resp = await client.messages.create(
+        resp = await client.chat.completions.create(
             model=MODEL,
             max_tokens=700,
             temperature=0,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_turn}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_turn},
+            ],
         )
     except Exception as e:
         import logging
         logging.getLogger(__name__).error("LLM call failed: %s", e)
         return None
 
-    raw = resp.content[0].text.strip()
+    raw = resp.choices[0].message.content.strip()
     action = _parse_output(raw, bundle, conv_id)
     if action is None:
         return None

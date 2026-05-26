@@ -18,16 +18,16 @@ import os
 import re
 from datetime import datetime, timezone
 
-import anthropic
+import openai
 
-MODEL = os.environ.get("LLM_MODEL", "claude-sonnet-4-6")
-_client: anthropic.AsyncAnthropic | None = None
+MODEL = os.environ.get("LLM_MODEL", "gpt-4o")
+_client: openai.AsyncOpenAI | None = None
 
 
-def _get_client() -> anthropic.AsyncAnthropic:
+def _get_client() -> openai.AsyncOpenAI:
     global _client
     if _client is None:
-        _client = anthropic.AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+        _client = openai.AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
     return _client
 
 
@@ -271,14 +271,16 @@ async def _llm_reply(
 
     try:
         client = _get_client()
-        resp = await client.messages.create(
+        resp = await client.chat.completions.create(
             model=MODEL,
             max_tokens=500,
             temperature=0,
-            system=system,
-            messages=[{"role": "user", "content": user_turn}],
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_turn},
+            ],
         )
-        raw = resp.content[0].text.strip()
+        raw = resp.choices[0].message.content.strip()
     except Exception as e:
         import logging
         logging.getLogger(__name__).error("LLM reply failed: %s", e)

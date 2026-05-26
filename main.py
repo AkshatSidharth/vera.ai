@@ -66,10 +66,10 @@ async def metadata():
     return {
         "team_name": "Vera",
         "team_members": ["Akshat Sidharth"],
-        "model": os.environ.get("LLM_MODEL", "claude-sonnet-4-6"),
+        "model": os.environ.get("LLM_MODEL", "gpt-4o"),
         "approach": (
             "trigger-kind dispatch → per-category system prompt → "
-            "Claude Sonnet (temp=0) → post-process (URL strip, dedup, field validation). "
+            "GPT-4o (temp=0) → post-process (URL strip, dedup, field validation). "
             "Reply handler: 4 deterministic patterns (auto-reply, opt-out, intent-transition, "
             "off-topic) before LLM fallback."
         ),
